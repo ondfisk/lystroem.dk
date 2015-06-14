@@ -1,18 +1,113 @@
-﻿body {
-    margin: 0; 
-    font-family: sans-serif;
-    font-size: 1em;
-	color: #000;
-	background: #fff;
+﻿body
+{
+    font-family: Consolas, "Lucida Console", Monaco, monospace;
+    font-size: 13px;
+    margin: 25px;
 }
 
-#main {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    margin-top: -250px;
-    margin-left: -300px;
-    width: 600px;
-    height: 500px;
+header
+{
     text-align: center;
+	margin-bottom: 50px;
+}
+
+h1
+{
+    font-size: 39px;
+}
+
+pre 
+{
+    font-family: Consolas, "Lucida Console", Monaco, monospace;
+    font-size: 13px;
+}
+
+a
+{
+    color: black;
+    text-decoration: none;
+}
+
+a:hover
+{
+    text-decoration: underline;
+}
+
+a img
+{
+    border: none;
+}
+
+#razor .tag
+{
+    background-color: yellow;
+}
+
+#razor .comment
+{
+    color: darkgreen;
+}
+
+#fsharp .keyword
+{
+    color: blue;
+}
+
+#fsharp .string
+{
+    color: maroon;
+}
+
+#fsharp .string a
+{
+    color: maroon;
+}
+
+#csharp .keyword
+{
+    color: blue;
+}
+    
+#csharp .string
+{
+    color: #a31515;
+}
+#csharp .string a
+{
+    color: #a31515;
+}
+
+#csharp .type
+{
+    color: #2b91af;
+}
+
+#python .keyword
+{
+    color: blue;
+}
+
+#python .string
+{
+    color: #a31515;
+}
+
+#python .string a
+{
+    color: #a31515;
+}
+
+#python .comment
+{
+    color: green;
+}
+
+#tabs-container
+{
+    margin: 0 auto;
+}
+
+#html5
+{
+    text-align: right;
 }
