@@ -1,0 +1,35 @@
+﻿body {
+    font-family: sans-serif;
+    font-size: 13px;
+    margin: 25px;
+}
+
+header {
+    text-align: center;
+    margin: 50px;
+}
+
+h1 {
+    font-size: 39px;
+}
+
+a {
+    color: black;
+    text-decoration: none;
+}
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    a img {
+        border: none;
+    }
+
+footer {
+    margin: 50px;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    font-size: 125%;
+}
