@@ -29,7 +29,7 @@ stages:
             displayName: Copy Files
             inputs:
               Contents: |
-                $(Build.SourcesDirectory)/**
+                $(Build.SourcesDirectory)/**/*.json
               targetFolder: $(Build.ArtifactStagingDirectory)
           - task: PublishPipelineArtifact@1
             displayName: Publish Pipeline Artifact
@@ -75,6 +75,7 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
                 - task: AzureResourceManagerTemplateDeployment@3
                   displayName: Deploy Azure Resources
                   inputs:
@@ -109,6 +110,7 @@ stages:
                           }
                       }
                 - task: AzureStaticWebApp@0
+                  displayName: Deploy Web App
                   inputs:
-                    app_location: $(Pipeline.Workspace)/drop/wwwroot
+                    app_location: ./wwwroot
                     azure_static_web_apps_api_token: $(deploymentToken)
