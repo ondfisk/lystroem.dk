@@ -98,14 +98,14 @@ stages:
                           $value = $PSItem.Value.value
 
                           if ($type -eq "SecureString") {
-                              Write-Host "##vso[task.setvariable variable=$keyname;issecret=true]$value"
+                              Write-Host "##vso[task.setvariable variable=$name;issecret=true]$value"
                           }
                           elseif ($type -eq "String") {
-                              Write-Host "##vso[task.setvariable variable=$keyname]$value"
+                              Write-Host "##vso[task.setvariable variable=$name]$value"
                           }
                           else {
                               $value = $value | ConvertTo-Json -Compress
-                              Write-Host "##vso[task.setvariable variable=$keyname]$value"
+                              Write-Host "##vso[task.setvariable variable=$name]$value"
                           }
                       }
                 - task: AzureStaticWebApp@0
