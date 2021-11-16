@@ -1,0 +1,100 @@
+trigger:
+  - master
+pr:
+  branches:
+    include:
+      - '*'
+
+variables:
+  buildConfiguration: Release
+  vmImage: ubuntu-latest
+  azureSubscription: C5
+
+stages:
+  - stage: Build
+    displayName: Build
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          vmImage: $(vmImage)
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              arguments: /P:SourceLinkCreate=false --configuration $(buildConfiguration)
+
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: test
+              arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura'
+              publishTestResults: true
+              projects: '**/*Tests/*.csproj'
+
+
+          - task: PublishCodeCoverageResults@1
+            displayName: Publish Code Coverage Report
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+
+          - task: CopyFiles@2
+            displayName: Copy files
+            inputs:
+              sourceFolder: $(Build.SourcesDirectory)/C5/bin/$(buildConfiguration)
+              contents: '*.nupkg'
+              targetFolder: $(Build.ArtifactStagingDirectory)
+              flattenFolders: true
+
+          # - script: |
+          #     sudo apt install cmake flex bison
+          #     mkdir docs
+          #     cd docs
+          #     git clone https://github.com/doxygen/doxygen.git
+          #     cd doxygen
+          #     mkdir build
+          #     cd build
+          #     cmake -G "Unix Makefiles" ..
+          #     make
+          #     make install
+          #     cd ../..
+          #     doxygen
+          #   workingDirectory: $(Build.SourcesDirectory)
+          #   displayName: Generate documentation
+          #   failOnStderr: true
+
+          # - task: ArchiveFiles@2
+          #   displayName: Archive documentation
+          #   inputs:
+          #     rootFolderOrFile: $(Build.SourcesDirectory)/docs/html
+          #     includeRootFolder: false
+          #     archiveType: zip
+          #     archiveFile: $(Build.ArtifactStagingDirectory)/docs.zip
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Pipeline Artifact
+            inputs:
+              artifactName: drop
+              targetPath: $(Build.ArtifactStagingDirectory)
+
+  - stage: Release
+    displayName: Release
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    jobs:
+      - deployment: Release
+        environment: Production
+        pool:
+          vmImage: $(vmImage)
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureRmWebAppDeployment@4
+                  displayName: Azure App Service Deploy
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    WebAppName: c5
+                    packageForLinux: $(System.DefaultWorkingDirectory)/**/docs.zip
