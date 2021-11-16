@@ -1,14 +1,13 @@
+---
 trigger:
-  - master
-pr:
-  branches:
-    include:
-      - '*'
+  - main
 
 variables:
-  buildConfiguration: Release
   vmImage: ubuntu-latest
-  azureSubscription: C5
+  azureSubscription: www.lystroem.dk
+  resourceGroupName: ondfisk
+  location: northeurope
+  webAppName: lystroem
 
 stages:
   - stage: Build
@@ -19,72 +18,40 @@ stages:
         pool:
           vmImage: $(vmImage)
         steps:
-          - task: DotNetCoreCLI@2
-            displayName: Build
+          - task: AzureCLI@2
+            displayName: Build Bicep Template
             inputs:
-              command: build
-              arguments: /P:SourceLinkCreate=false --configuration $(buildConfiguration)
-
-          - task: DotNetCoreCLI@2
-            displayName: Test
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az bicep build --file $(Build.SourcesDirectory)/azuredeploy.bicep
+          - task: ArchiveFiles@2
+            displayName: Archive Files
             inputs:
-              command: test
-              arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura'
-              publishTestResults: true
-              projects: '**/*Tests/*.csproj'
-
-
-          - task: PublishCodeCoverageResults@1
-            displayName: Publish Code Coverage Report
-            inputs:
-              codeCoverageTool: Cobertura
-              summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
-
+              rootFolderOrFile: $(Build.SourcesDirectory)/wwwroot
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
           - task: CopyFiles@2
-            displayName: Copy files
+            displayName: Copy Files
             inputs:
-              sourceFolder: $(Build.SourcesDirectory)/C5/bin/$(buildConfiguration)
-              contents: '*.nupkg'
+              Contents: |
+                $(Build.SourcesDirectory)/**/*.json
               targetFolder: $(Build.ArtifactStagingDirectory)
-              flattenFolders: true
-
-          # - script: |
-          #     sudo apt install cmake flex bison
-          #     mkdir docs
-          #     cd docs
-          #     git clone https://github.com/doxygen/doxygen.git
-          #     cd doxygen
-          #     mkdir build
-          #     cd build
-          #     cmake -G "Unix Makefiles" ..
-          #     make
-          #     make install
-          #     cd ../..
-          #     doxygen
-          #   workingDirectory: $(Build.SourcesDirectory)
-          #   displayName: Generate documentation
-          #   failOnStderr: true
-
-          # - task: ArchiveFiles@2
-          #   displayName: Archive documentation
-          #   inputs:
-          #     rootFolderOrFile: $(Build.SourcesDirectory)/docs/html
-          #     includeRootFolder: false
-          #     archiveType: zip
-          #     archiveFile: $(Build.ArtifactStagingDirectory)/docs.zip
-
           - task: PublishPipelineArtifact@1
             displayName: Publish Pipeline Artifact
             inputs:
               artifactName: drop
               targetPath: $(Build.ArtifactStagingDirectory)
 
-  - stage: Release
-    displayName: Release
+  - stage: Validate
+    displayName: Validate
     dependsOn: Build
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    condition: succeeded()
     jobs:
-      - deployment: Release
+      - deployment: Validate
+        displayName: Validate
         environment: Production
         pool:
           vmImage: $(vmImage)
@@ -92,9 +59,43 @@ stages:
           runOnce:
             deploy:
               steps:
-                - task: AzureRmWebAppDeployment@4
-                  displayName: Azure App Service Deploy
+                - task: AzureResourceManagerTemplateDeployment@3
+                  displayName: Validate Azure Resources Deployment
+                  inputs:
+                    azureResourceManagerConnection: $(azureSubscription)
+                    resourceGroupName: $(resourceGroupName)
+                    location: $(location)
+                    csmFile: $(Pipeline.Workspace)/drop/azuredeploy.json
+                    csmParametersFile: $(Pipeline.Workspace)/drop/azuredeploy.parameters.json
+                    deploymentMode: Validation
+
+  - stage: Deploy
+    displayName: Deploy
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy
+        environment: Production
+        pool:
+          vmImage: $(vmImage)
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureResourceManagerTemplateDeployment@3
+                  displayName: Deploy Azure Resources
+                  inputs:
+                    azureResourceManagerConnection: $(azureSubscription)
+                    resourceGroupName: $(resourceGroupName)
+                    location: $(location)
+                    csmFile: $(Pipeline.Workspace)/drop/azuredeploy.json
+                    csmParametersFile: $(Pipeline.Workspace)/drop/azuredeploy.parameters.json
+                    deploymentMode: Incremental
+                - task: AzureWebApp@1
+                  displayName: Deploy Azure Web App
                   inputs:
                     azureSubscription: $(azureSubscription)
-                    WebAppName: c5
-                    packageForLinux: $(System.DefaultWorkingDirectory)/**/docs.zip
+                    appName: $(webAppName)
+                    appType: webAppLinux
+                    package: $(System.DefaultWorkingDirectory)/**/*.zip
