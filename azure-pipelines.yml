@@ -98,4 +98,4 @@ stages:
                     azureSubscription: $(azureSubscription)
                     appName: $(webAppName)
                     appType: webAppLinux
-                    package: $(System.DefaultWorkingDirectory)/**/*.zip
+                    package: $(Pipeline.Workspace)/drop/**/*.zip
