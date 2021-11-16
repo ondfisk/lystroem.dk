@@ -1,41 +1,19 @@
 param location string = resourceGroup().location
-param appServicePlanName string
 param webAppName string
+param customDomainName string
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
-  name: appServicePlanName
-  location: location
-  kind: 'linux'
-  sku: {
-    name: 'P1V3'
-  }
-  properties: {
-    elasticScaleEnabled: false
-    reserved: true
-  }
-}
-
-resource webApp 'Microsoft.Web/sites@2021-02-01' = {
+resource webApp 'Microsoft.Web/staticSites@2021-02-01' = {
   name: webAppName
   location: location
-  kind: 'app,linux'
-  identity: {
-    type: 'SystemAssigned'
+  sku: {
+    name: 'Free'
   }
-  properties: {
-    httpsOnly: true
-    reserved: true
-    serverFarmId: appServicePlan.id
-  }
+  properties: {}
 
-  resource web 'config' = {
-    name: 'web'
-    properties: {
-      alwaysOn: false
-      ftpsState: 'Disabled'
-      http20Enabled: true
-      minTlsVersion: '1.2'
-      scmMinTlsVersion: '1.2'
-    }
+  resource customDomain 'customDomains' = {
+    name: customDomainName
+    properties: {}
   }
 }
+
+output deploymentToken string = webApp.listSecrets().properties.apiKey

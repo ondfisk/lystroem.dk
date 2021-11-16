@@ -7,7 +7,6 @@ variables:
   azureSubscription: www.lystroem.dk
   resourceGroupName: ondfisk
   location: northeurope
-  webAppName: lystroem
 
 stages:
   - stage: Build
@@ -26,18 +25,11 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 az bicep build --file $(Build.SourcesDirectory)/azuredeploy.bicep
-          - task: ArchiveFiles@2
-            displayName: Archive Files
-            inputs:
-              rootFolderOrFile: $(Build.SourcesDirectory)/wwwroot
-              includeRootFolder: false
-              archiveType: zip
-              archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
           - task: CopyFiles@2
             displayName: Copy Files
             inputs:
               Contents: |
-                $(Build.SourcesDirectory)/**/*.json
+                $(Build.SourcesDirectory)/**
               targetFolder: $(Build.ArtifactStagingDirectory)
           - task: PublishPipelineArtifact@1
             displayName: Publish Pipeline Artifact
@@ -92,10 +84,31 @@ stages:
                     csmFile: $(Pipeline.Workspace)/drop/azuredeploy.json
                     csmParametersFile: $(Pipeline.Workspace)/drop/azuredeploy.parameters.json
                     deploymentMode: Incremental
-                - task: AzureWebApp@1
-                  displayName: Deploy Azure Web App
+                    deploymentOutputs: armOutputs
+                - task: PowerShell@2
+                  displayName: Parse Deployment Output
                   inputs:
-                    azureSubscription: $(azureSubscription)
-                    appName: $(webAppName)
-                    appType: webAppLinux
-                    package: $(Pipeline.Workspace)/drop/**/*.zip
+                    targetType: inline
+                    script: |
+                      $output = '$(armOutputs)' | ConvertFrom-Json
+
+                      $output.PSObject.Properties | ForEach-Object {
+                          $type = $PSItem.Value.type
+                          $name = $PSItem.Name
+                          $value = $PSItem.Value.value
+
+                          if ($type -eq "SecureString") {
+                              Write-Host "##vso[task.setvariable variable=$keyname;issecret=true]$value"
+                          }
+                          elseif ($type -eq "String") {
+                              Write-Host "##vso[task.setvariable variable=$keyname]$value"
+                          }
+                          else {
+                              $value = $value | ConvertTo-Json -Compress
+                              Write-Host "##vso[task.setvariable variable=$keyname]$value"
+                          }
+                      }
+                - task: AzureStaticWebApp@0
+                  inputs:
+                    app_location: $(Pipeline.Workspace)/drop/wwwroot
+                    azure_static_web_apps_api_token: $(deploymentToken)
