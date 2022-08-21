@@ -1,3 +1,3 @@
 # www.lystroem.dk
 
-Code for deploying <www.lystroem.dk> to Azure.
+Source code for <www.lystroem.dk>.
