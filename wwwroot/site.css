@@ -25,11 +25,3 @@ a {
     a img {
         border: none;
     }
-
-footer {
-    margin: 50px;
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    font-size: 125%;
-}
