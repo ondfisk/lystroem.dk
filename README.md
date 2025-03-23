@@ -1,3 +1,3 @@
-# www.lystroem.dk
+# [lystroem.dk](https://lystroem.dk)
 
-Source code for <www.lystroem.dk>.
+Source code for [lystroem.dk](https://lystroem.dk).
